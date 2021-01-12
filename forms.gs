@@ -22,7 +22,7 @@ function onFormSubmit(e) {
   var gdrive_bytesize = gdrive_file.getSize();
   var gdrive_filename = gdrive_file.getName();
   
-  var intake_folder_id = getIdFromUrl(INTAKE_FOLDER_URL);// Hard-coded for our shared folder
+  var intake_folder_id = getIdFromUrl(INTAKE_FOLDER_URL);
   var intake_folder = DriveApp.getFolderById(intake_folder_id)
   
 
