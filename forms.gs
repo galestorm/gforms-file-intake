@@ -1,6 +1,6 @@
 function onFormSubmit(e) {
   
-  var responseArray = {name: e.values[0],
+  var responseArray = {name: e.values[2],
                        email: e.values[1], project: e.values[6],
                        category: e.values[4], section: e.values[3], url: e.values[8]
   };
@@ -39,9 +39,9 @@ function onFormSubmit(e) {
      htmlBody += '<li>' + "Category: " + category + '</li>';
      htmlBody += '<li>' + "File Size: " + gdrive_bytesize + ' bytes' + '</li>';
      htmlBody += '<li>' + "Uploaded on: " + gdrive_creationDate + '</li>';
-     htmlBody += '<p>' + "Thank you so much for participating! We couldn't do it without you!" + '</p>'
+     htmlBody += '<p>' + "Thank you so much for participating! We couldn't sparkle without you!" + '</p>'
      htmlBody += '<hr />'
-     htmlBody += '<i>' + "This message was automatically generated, replies are not monitored." + '</i>'
+     htmlBody += '<i>' + "This message was automatically generated." + '</i>'
 
      htmlBody += '</div>';
    
@@ -58,15 +58,17 @@ function onFormSubmit(e) {
     file.setName( project + "-" + category + "-" + section + "-" + name + "_" + t);
   }
 
-  // Add the new filename to the last column in our spreadsheet
+  // Add the new filename to the last column in our spreadsheet (hardcoded to column k)
   var new_filename = file.getName();
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var s = ss.getActiveSheet();
   var r = s.getLastRow();
-  var c = s.getLastColumn();
-  var range = s.getRange(r, c)
-  var offset = range.offset(0, 1)
-  offset.setValue(new_filename)
+  //var c = s.getLastColumn();
+  var range = s.getRange(r, 11)
+
+  //var offset = range.offset(0, 1)
+
+  range.setValue(new_filename)
 
 
 
@@ -107,3 +109,4 @@ function onFormSubmit(e) {
 
    
 }
+
