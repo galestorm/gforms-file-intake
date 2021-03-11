@@ -1,112 +1,124 @@
 function onFormSubmit(e) {
-  
-  var responseArray = {name: e.values[2],
-                       email: e.values[1], project: e.values[6],
-                       category: e.values[4], section: e.values[3], url: e.values[8]
-  };
-
-  // found this on stackoverflow.com, seems to work -- I don't speak regex
-  function getIdFromUrl(url) { return url.match(/[-\w]{25,}/); }
-  
-  var INTAKE_FOLDER_URL = "REPLACE WITH URL OF INTAKE FOLDER"
-  var gdrive_url = responseArray['url'];
-  var name = responseArray['name'];
-  var email = responseArray['email'];
-  var project = responseArray['project'];
-  var category = responseArray['category'];
-  var section = responseArray['section'];
-  
-  var gdrive_id = getIdFromUrl(gdrive_url);
-  var gdrive_file = DriveApp.getFileById(gdrive_id);
-  var gdrive_creationDate = gdrive_file.getDateCreated();
-  var gdrive_bytesize = gdrive_file.getSize();
-  var gdrive_filename = gdrive_file.getName();
-  
-  var intake_folder_id = getIdFromUrl(INTAKE_FOLDER_URL);
-  var intake_folder = DriveApp.getFolderById(intake_folder_id)
-  
-
-  // Send a confirmation email
-  var subject = "Upload Recieved"
-  
-     var htmlBody = '<div>';
-     htmlBody += '<p>'
-     htmlBody += 'Hi ' + name + '!';
-     htmlBody += '</p>'
-     htmlBody += '<p>' + "We have received your file for the " + '<strong>' + project + '</strong>' + " Project!" + '</p>'
-     htmlBody += '<li>' + "Original File Name: " + gdrive_filename + '</li>';
-     htmlBody += '<li>' + "Section: " + section + '</li>';
-     htmlBody += '<li>' + "Category: " + category + '</li>';
-     htmlBody += '<li>' + "File Size: " + gdrive_bytesize + ' bytes' + '</li>';
-     htmlBody += '<li>' + "Uploaded on: " + gdrive_creationDate + '</li>';
-     htmlBody += '<p>' + "Thank you so much for participating! We couldn't sparkle without you!" + '</p>'
-     htmlBody += '<hr />'
-     htmlBody += '<i>' + "This message was automatically generated." + '</i>'
-
-     htmlBody += '</div>';
-   
-  
-  GmailApp.sendEmail(email, subject, '', {htmlBody:htmlBody}); 
-
-  var file=DriveApp.getFileById(gdrive_id);
-  var t=Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd_HHmmss");
-
-  // Rename the file to something useful
-  if (category.indexOf('Intro') >-1) {
-    file.setName( project + "-" + category + "-" + name + "_" + t)
-  } else {
-    file.setName( project + "-" + category + "-" + section + "-" + name + "_" + t);
-  }
-
-  // Add the new filename to the last column in our spreadsheet (hardcoded to column k)
-  var new_filename = file.getName();
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var s = ss.getActiveSheet();
-  var r = s.getLastRow();
-  //var c = s.getLastColumn();
-  var range = s.getRange(r, 11)
-
-  //var offset = range.offset(0, 1)
-
-  range.setValue(new_filename)
-
-
-
- //Create folder if does not exists only (this section copied wholesale from here: 
- // https://yagisanatode.com/2018/07/08/google-apps-script-how-to-create-folders-in-directories-with-driveapp/ )
-  function createFolder(folderID, folderName){
-    var parentFolder = DriveApp.getFolderById(folderID);
-    var subFolders = parentFolder.getFolders();
-    var doesntExists = true;
-    var newFolder = '';
-  
-    // Check if folder already exists.
-    while(subFolders.hasNext()){
-      var folder = subFolders.next();
-    
-      //If the name exists return the id of the folder
-      if(folder.getName() === folderName){
-        doesntExists = false;
-        newFolder = folder;
-        return newFolder.getId();
-      };
-    };
-    //If the name doesn't exists, then create a new folder
-    if(doesntExists == true){
-      //If the file doesn't exists
-      newFolder = parentFolder.createFolder(folderName);
-      return newFolder.getId();
-    };
-  };
-
-  var myFolderID = createFolder(intake_folder_id, project);
-  var myFolder = DriveApp.getFolderById(myFolderID)
-  // Wait for processing
-  Utilities.sleep(1000)
-  file.moveTo(myFolder);
-
-
-
-   
+  // Comment out line 3 and uncomment line 4 to debug
+  const submission = new SubmissionData(e);
+  // const submission = getDebugSubmission();
+  submission.setGDriveFilename();
+  uploadFileToIntakeFolder(submission);
+  sendConfirmationEmail(submission);
+  completeTrackingSpreadsheet(submission);
 }
 
+class SubmissionData {
+  constructor(submissionEvent) {
+    this.rawFormValues = {
+      name: submissionEvent.values[2],
+      email: submissionEvent.values[1],
+      project: submissionEvent.values[6],
+      category: submissionEvent.values[4],
+      section: submissionEvent.values[3],
+      uploadType: submissionEvent.values[7],
+      url: submissionEvent.values[8]
+    };
+
+    this.gdriveFile = DriveApp.getFileById(getIdFromUrl(this.rawFormValues.url));
+    this.originalFileName = this.gdriveFile.getName();
+  }
+
+  getRawFormValues() {
+    return this.rawFormValues;
+  }
+
+  getGDriveFile() {
+    return this.gdriveFile;
+  }
+
+  getOriginalFileName() {
+    return this.originalFileName;
+  }
+
+  setGDriveFilename() {
+      // Rename the file to something useful
+    const introModifier = this.rawFormValues.category.indexOf('Intro') > -1 ? '' : `-${this.rawFormValues.section}`;
+    const formattedTime=Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd_HHmmss');
+    this.gdriveFile.setName(`${this.rawFormValues.project}-${this.rawFormValues.category}${introModifier}-${this.rawFormValues.name}_${formattedTime}`);
+  }
+};
+
+// Gets the final 25 characters of the url, which should be the id
+function getIdFromUrl(url) {
+  return url.match(/[-\w]{25,}/);
+}
+
+function uploadFileToIntakeFolder(submission) {
+  const INTAKE_FOLDER_ID = 'REPLACE WITH INTAKE FOLDER URL';
+
+  var intakeFolderId = getIdFromUrl(INTAKE_FOLDER_ID);
+  var intakeFolder = DriveApp.getFolderById(intakeFolderId);
+  submission.getGDriveFile().moveTo(intakeFolder);
+}
+
+function sendConfirmationEmail(submission) {
+  const rawFormValues = submission.getRawFormValues();
+  const subject = 'Upload Recieved';
+  const htmlBody = `
+    <div>
+      <p>
+        Hi ${rawFormValues.name}!
+      </p>
+      <p>
+        We have received your file for the <strong>${rawFormValues.project}</strong> project!
+      </p>
+      <li>Original File Name: ${submission.getOriginalFileName()}</li>
+      <li>Section: ${rawFormValues.section}</li>
+      <li>Category: ${rawFormValues.category}</li>
+      <li>File Size: ${submission.getGDriveFile().getSize()}</li>
+      <li>Uploaded On: ${submission.getGDriveFile().getDateCreated()}</li>
+      <p>
+        Thank you so much for participating! We couldn't sparkle without you!
+      </p>
+      <hr/>
+      <i>This message was automatically generated.</i>
+    </div>`
+  ;
+
+  GmailApp.sendEmail(rawFormValues.email, subject, '', { htmlBody: htmlBody });
+}
+
+function completeTrackingSpreadsheet(submission) {
+  const TRACKING_SPREADSHEET_ID = 'REPLACE WITH SPREADSHEET ID FROM URL';
+  const spreadsheet = SpreadsheetApp.openById(TRACKING_SPREADSHEET_ID);
+  const sheet = spreadsheet.getSheets()[0];
+  if (submission.getRawFormValues().category == 'Chorus') {
+    const insertionCell = findInsertionCell(sheet, submission);
+    sheet.getRange(insertionCell).setValue(1);
+  }
+}
+
+function findInsertionCell(sheet, submission) {
+  const memberFinder = sheet.getRange(1, 1, sheet.getLastRow()).createTextFinder(submission.getRawFormValues().name);
+  const songFinder = sheet.getRange(1, 1 ,1 , sheet.getLastColumn()).createTextFinder(submission.getRawFormValues().project);
+
+  const memberCellCoords = memberFinder.findNext().getA1Notation();
+  const songAudioCellCoords = songFinder.findNext().getA1Notation();
+  const songVideoCellCoords = songFinder.findNext().getA1Notation();
+
+  const column = submission.getRawFormValues().uploadType === 'Audio' ? songAudioCellCoords.replace(/[0-9]/g, '') : songVideoCellCoords.replace(/[0-9]/g, '');
+  const row = memberCellCoords.replace(/[^0-9]/g, '');
+  return `${column}${row}`;
+}
+
+function getDebugSubmission() {
+  return new SubmissionData({
+    values:[
+      '3/3/2021 20:12:15',
+      'gale.harrington19@gmail.com',
+      'Gale Harrington',
+      'Soprano',
+      'Band',
+      'Trombone',
+      'I Believe',
+      'Audio',
+      'https://drive.google.com/open?id=1Z9dmeEM_YYcDtfn3jxK_q5IOKSdGCTS3',
+      'I love forms!']
+  });
+}
