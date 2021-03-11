@@ -118,7 +118,7 @@ function getDebugSubmission() {
       'Trombone',
       'I Believe',
       'Audio',
-      'https://drive.google.com/open?id=1Z9dmeEM_YYcDtfn3jxK_q5IOKSdGCTS3',
+      'REPLACE WITH FILE URL',
       'I love forms!']
   });
 }
