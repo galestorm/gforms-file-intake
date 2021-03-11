@@ -51,11 +51,27 @@ function getIdFromUrl(url) {
 
 function uploadFileToIntakeFolder(submission) {
   const INTAKE_FOLDER_ID = 'REPLACE WITH INTAKE FOLDER URL';
-
-  var intakeFolderId = getIdFromUrl(INTAKE_FOLDER_ID);
-  var intakeFolder = DriveApp.getFolderById(intakeFolderId);
-  submission.getGDriveFile().moveTo(intakeFolder);
+  const intakeFolderId = getIdFromUrl(INTAKE_FOLDER_ID);
+  const subFolder = getProjectSubFolder(intakeFolderId, submission.getRawFormValues().project);
+  submission.getGDriveFile().moveTo(subFolder);
 }
+
+// Gets the project subfolder, creating one if it doesn't already exist. Adapted from:
+ // https://yagisanatode.com/2018/07/08/google-apps-script-how-to-create-folders-in-directories-with-driveapp/ )
+function getProjectSubFolder(parentFolderId, projectName) {
+  const parentFolder = DriveApp.getFolderById(parentFolderId);
+  const subFolders = parentFolder.getFolders();
+
+  while (subFolders.hasNext()) {
+    const subFolder = subFolders.next();
+
+    if (subFolder.getName() === projectName) {
+      return subFolder;
+    }
+  }
+
+  return parentFolder.createFolder(projectName);
+};
 
 function sendConfirmationEmail(submission) {
   const rawFormValues = submission.getRawFormValues();
