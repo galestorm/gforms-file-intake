@@ -111,8 +111,8 @@ function getDebugSubmission() {
   return new SubmissionData({
     values:[
       '3/3/2021 20:12:15',
-      'gale.harrington19@gmail.com',
-      'Gale Harrington',
+      'REPLACE WITH EMAIL',
+      'REPLACE WITH NAME',
       'Soprano',
       'Band',
       'Trombone',
